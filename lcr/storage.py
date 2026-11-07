@@ -7,17 +7,16 @@ from lcr.models import Problem
 DATA_PATH = Path.home() / ".lcr" / "problems.json"
 
 
-def save(problems: dict[int, Problem], path: Path = DATA_PATH)  -> None:
+def _to_dict(problem: Problem) -> dict:
+    d = asdict(problem)
+    d['next_review'] = d['next_review'].isoformat()
+    return d
+
+
+def save(problems: dict[int, Problem], path: Path = DATA_PATH) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Problems to dict
-    problems_list = []
-    for problem in problems.values():
-        d = asdict(problem)
-        d['next_review'] = d['next_review'].isoformat()
-        problems_list.append(d)
-    # Save to json
     with open(path, "w") as f:
-        json.dump(problems_list, f, indent=2)
+        json.dump([_to_dict(p) for p in problems.values()], f, indent=2)
 
 
 
