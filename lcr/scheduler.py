@@ -41,3 +41,26 @@ def apply_grade(problem: Problem, grade: int, today: date) -> None:
     problem.ease_factor += (0.1 - (MAXIMUM_GRADE - grade) * (0.08 + (MAXIMUM_GRADE - grade) * 0.02))
     problem.ease_factor = max(MINIMUM_EASE_FACTOR, problem.ease_factor)
     problem.next_review = today + timedelta(days=problem.interval)
+
+
+def due_problems(problems: dict[int, Problem], today: date) -> list[Problem]:
+    """Return the problems that are due for review, most overdue first.
+
+    A problem is due if its next_review date is today or earlier, so
+    problems missed on previous days are included. The problems are
+    not modified.
+
+    Args:
+        problems: All problems, keyed by problem number.
+        today: The current date to compare review dates against.
+
+    Returns:
+        A new list of due problems sorted by next_review, oldest first;
+        problems with the same date are ordered by ease_factor, hardest
+        first. An empty list if nothing is due.
+    """
+    problems_list = []
+    for problem in problems.values():
+        if problem.next_review <= today:
+            problems_list.append(problem)
+    return sorted(problems_list, key=lambda problem: (problem.next_review, problem.ease_factor))
