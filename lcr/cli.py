@@ -29,15 +29,13 @@ def main(argv: list[str] | None = None) -> None:
         required=True,
         help="One or more patterns used to solve the problem.",
     )
-    add_cmd.add_argument(
-        "--grade",
-        type=int,
-        required=True,
-        choices=range(MINIMUM_GRADE, MAXIMUM_GRADE + 1),
-        help=f"Recall quality from {MINIMUM_GRADE} (forgot) to {MAXIMUM_GRADE} (perfect).",
-    )
+    _add_argument_grade(add_cmd)
 
     subparsers.add_parser("today", help="Show problems to solve today.")
+
+    review_cmd = subparsers.add_parser("review", help="Record a review and reschedule the problem.")
+    review_cmd.add_argument("number", type=int, help="The number of the problem.")
+    _add_argument_grade(review_cmd)
 
     args = parser.parse_args(argv)
 
@@ -45,6 +43,18 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_add(args, add_cmd)
     elif args.command == "today":
         _cmd_today(args)
+    elif args.command == "review":
+        _cmd_review(args, review_cmd)
+
+
+def _add_argument_grade(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--grade",
+        type=int,
+        required=True,
+        choices=range(MINIMUM_GRADE, MAXIMUM_GRADE + 1),
+        help=f"Recall quality from {MINIMUM_GRADE} (forgot) to {MAXIMUM_GRADE} (perfect).",
+    )
 
 
 def _cmd_add(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
@@ -85,4 +95,22 @@ def _cmd_today(args: argparse.Namespace) -> None:
     for problem in due:
         days_overdue = (today - problem.next_review).days
         print(f"|{problem.number:<{number_width}}|{problem.title:<{title_width}}|{days_overdue:>{overdue_width}}|")
-        
+
+
+def _cmd_review(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    problems = load(args.data_file)
+    today = date.today()
+    problem = problems.get(args.number)
+    if problem is None:
+        parser.error(f"problem {args.number} does not exist; "
+                     f"use 'lcr add {args.number} TITLE "
+                      "--patterns PATTERN --grade N' to add it"
+        )
+    elif problem.next_review > today:
+        print(f"Note: {problem.number} is not due until {problem.next_review}; reviewing early.")
+    apply_grade(problem, args.grade, today)
+    save(problems, args.data_file)
+    print(f"Reviewed {problem.number} {problem.title}. " 
+          f"Next review in {(problem.next_review - today).days} "
+          f"day(s) ({problem.next_review})"
+    )
