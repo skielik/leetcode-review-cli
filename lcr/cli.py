@@ -3,7 +3,7 @@ from datetime import date
 from pathlib import Path
 
 from lcr.models import Problem
-from lcr.scheduler import MAXIMUM_GRADE, MINIMUM_GRADE, apply_grade
+from lcr.scheduler import MAXIMUM_GRADE, MINIMUM_GRADE, apply_grade, due_problems
 from lcr.storage import DATA_PATH, load, save
 
 
@@ -37,10 +37,14 @@ def main(argv: list[str] | None = None) -> None:
         help=f"Recall quality from {MINIMUM_GRADE} (forgot) to {MAXIMUM_GRADE} (perfect).",
     )
 
+    subparsers.add_parser("today", help="Show problems to solve today.")
+
     args = parser.parse_args(argv)
 
     if args.command == "add":
         _cmd_add(args, add_cmd)
+    elif args.command == "today":
+        _cmd_today(args)
 
 
 def _cmd_add(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
@@ -58,3 +62,27 @@ def _cmd_add(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
         f"Added {new_problem.number} {new_problem.title}. "
         f"Next review: {new_problem.next_review}."
     )
+
+
+def _cmd_today(args: argparse.Namespace) -> None:
+    problems = load(args.data_file)
+    today = date.today()
+    if not problems:
+        print("No problems yet. Add one with 'lcr add'.")
+        return
+    due = due_problems(problems, today)
+    if not due:
+        print("No problems due today.")
+        return
+    number_width = len("#")
+    title_width = len("Title")
+    overdue_width = len("Days overdue")
+    for problem in due:
+        number_width = max(number_width, len(str(problem.number)))
+        title_width = max(title_width, len(problem.title))
+        overdue_width = max(overdue_width, len(str((today - problem.next_review).days)))
+    print(f"|{"#":<{number_width}}|{"Title":<{title_width}}|{"Days overdue":>{overdue_width}}|")
+    for problem in due:
+        days_overdue = (today - problem.next_review).days
+        print(f"|{problem.number:<{number_width}}|{problem.title:<{title_width}}|{days_overdue:>{overdue_width}}|")
+        
