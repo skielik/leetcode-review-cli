@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     add_cmd.add_argument("title", help="The name/title of the problem.")
     add_cmd.add_argument(
         "--patterns",
+        type=_normalize_pattern,
         nargs="+",
         required=True,
         help="One or more patterns used to solve the problem.",
@@ -55,6 +56,10 @@ def _add_argument_grade(parser: argparse.ArgumentParser) -> None:
         choices=range(MINIMUM_GRADE, MAXIMUM_GRADE + 1),
         help=f"Recall quality from {MINIMUM_GRADE} (forgot) to {MAXIMUM_GRADE} (perfect).",
     )
+
+
+def _normalize_pattern(pattern: str) -> str:
+    return pattern.strip().lower()
 
 
 def _cmd_add(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
