@@ -5,6 +5,7 @@ from pathlib import Path
 from lcr.models import Problem
 from lcr.scheduler import MAXIMUM_GRADE, MINIMUM_GRADE, apply_grade, due_problems
 from lcr.storage import DATA_PATH, load, save
+from lcr.stats import pattern_stats
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -38,6 +39,10 @@ def main(argv: list[str] | None = None) -> None:
     review_cmd.add_argument("number", type=int, help="The number of the problem.")
     _add_argument_grade(review_cmd)
 
+    subparsers.add_parser(
+        "stats", help="Show average ease per pattern, weakest first."
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "add":
@@ -46,6 +51,10 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_today(args)
     elif args.command == "review":
         _cmd_review(args, review_cmd)
+    elif args.command == "stats":
+        _cmd_stats(args)
+    else:
+        raise NotImplementedError(f"no handler for command '{args.command}'")
 
 
 def _add_argument_grade(parser: argparse.ArgumentParser) -> None:
@@ -100,6 +109,32 @@ def _cmd_today(args: argparse.Namespace) -> None:
     for problem in due:
         days_overdue = (today - problem.next_review).days
         print(f"|{problem.number:<{number_width}}|{problem.title:<{title_width}}|{days_overdue:>{overdue_width}}|")
+
+
+def _cmd_stats(args: argparse.Namespace) -> None:
+    problems = load(args.data_file)
+    if not problems:
+        print("No problems yet. Add one with 'lcr add'.")
+        return
+    stats = pattern_stats(problems)
+    pattern_width = len("Pattern")
+    count_width = len("Problems")
+    ease_width = len("Avg ease")
+    for stat in stats:
+        pattern_width = max(pattern_width, len(stat.pattern))
+        count_width = max(count_width, len(str(stat.count)))
+        ease_width = max(ease_width, len(f"{stat.average_ease:.2f}"))
+    print(
+        f"|{'Pattern':<{pattern_width}}"
+        f"|{'Problems':>{count_width}}"
+        f"|{'Avg ease':>{ease_width}}|"
+    )
+    for stat in stats:
+        print(
+            f"|{stat.pattern:<{pattern_width}}"
+            f"|{stat.count:>{count_width}}"
+            f"|{stat.average_ease:>{ease_width}.2f}|"
+        )
 
 
 def _cmd_review(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
